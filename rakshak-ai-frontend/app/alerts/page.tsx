@@ -13,7 +13,7 @@ export default function AlertsPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <Navbar />
         <main className="p-4 md:p-8 space-y-8 max-w-[1440px] mx-auto w-full">
-          
+
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-panel p-6 rounded-[24px]">
             <div>
               <h1 className="font-display text-2xl font-bold text-field-100 flex items-center gap-2">
