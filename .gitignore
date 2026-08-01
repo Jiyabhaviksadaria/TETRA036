@@ -1,0 +1,48 @@
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/
+python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# SQLite databases
+*.db
+*.sqlite
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local system files
+.DS_Store
+Thumbs.db
+
+# Scratch directory (agent specific, not project code)
+scratch/
