@@ -1,28 +1,39 @@
+'use client';
+
 import React from 'react';
-import { PageHeader } from '@/components/common/PageHeader';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Navbar } from '@/components/layout/Navbar';
+import { AnalyticsPreview } from '@/components/landing/AnalyticsPreview';
+import { BarChart3, Download, Calendar } from 'lucide-react';
 
 export default function AnalyticsPage() {
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="AI Intelligence & Analytics"
-        subtitle="Historical detection metrics, model performance, and sector heatmaps"
-      />
+    <div className="flex min-h-screen bg-rakshak-bg text-rakshak-text">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <Navbar />
+        <main className="p-4 md:p-8 space-y-8 max-w-[1440px] mx-auto w-full">
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card p-6 rounded-[24px]">
+            <div>
+              <h1 className="font-sora text-2xl font-bold text-rakshak-text flex items-center gap-2">
+                <BarChart3 className="w-6 h-6 text-rakshak-primary" />
+                Farm Security Intelligence &amp; Analytics
+              </h1>
+              <p className="text-xs text-rakshak-secondaryText font-inter">
+                Historical intrusion heatmaps, species trends, and deterrence efficiency metrics.
+              </p>
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 h-64 flex flex-col justify-between">
-          <h3 className="text-lg font-bold text-white">Detection Frequency Heatmap</h3>
-          <div className="flex-1 flex items-center justify-center text-slate-500 font-mono text-sm">
-            [ Interactive Chart Placeholder ]
+            <button className="px-5 py-2.5 rounded-full bg-rakshak-primary text-white font-sora font-semibold text-xs flex items-center gap-2 shadow-soft hover:shadow-glow transition-all">
+              <Download className="w-4 h-4" />
+              <span>Export Monthly Report (PDF)</span>
+            </button>
           </div>
-        </div>
 
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 h-64 flex flex-col justify-between">
-          <h3 className="text-lg font-bold text-white">Neural Net Accuracy Rate</h3>
-          <div className="flex-1 flex items-center justify-center text-slate-500 font-mono text-sm">
-            [ Model Metrics Visualizer ]
-          </div>
-        </div>
+          <AnalyticsPreview />
+
+        </main>
       </div>
     </div>
   );

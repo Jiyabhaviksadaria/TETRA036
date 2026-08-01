@@ -1,31 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #060913;
-  --foreground: #f8fafc;
+  --font-sora: 'Sora', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+  --font-ibm-plex: 'IBM Plex Sans', monospace;
+  
+  --bg-main: #F7FAF7;
+  --bg-dark: #121815;
+  --card-white: #FFFFFF;
+  --text-main: #18201B;
+  --text-muted: #65726B;
+  --primary-green: #2F9D68;
+  --accent-green: #4CCB88;
+  --border-color: #E3ECE5;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-inter);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sora);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.font-num {
+  font-family: var(--font-ibm-plex);
+}
+
+/* Glassmorphism utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 236, 229, 0.8);
+}
+
+.glass-card-dark {
+  background: rgba(18, 24, 21, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-nav {
+  background: rgba(247, 250, 247, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(227, 236, 229, 0.6);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(76, 203, 136, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(76, 203, 136, 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+.animate-scanline {
+  animation: scanline 8s linear infinite;
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #EEF5EF;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+  background: #C4D7C9;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #00f2fe;
+  background: #2F9D68;
 }

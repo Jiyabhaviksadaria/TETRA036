@@ -1,28 +1,15 @@
 export const colors = {
-  bg: {
-    dark: '#0B0F19',
-    card: 'rgba(17, 24, 39, 0.7)',
-    cardHover: 'rgba(31, 41, 55, 0.8)',
-  },
-  primary: {
-    DEFAULT: '#00F2FE',
-    glow: 'rgba(0, 242, 254, 0.4)',
-    dark: '#00B8C4',
-  },
-  accent: {
-    DEFAULT: '#4FACFE',
-    purple: '#7C3AED',
-  },
-  status: {
-    critical: '#EF4444',
-    high: '#F97316',
-    medium: '#F59E0B',
-    low: '#10B981',
-    info: '#3B82F6',
-  },
-  text: {
-    primary: '#F9FAFB',
-    secondary: '#9CA3AF',
-    muted: '#6B7280',
-  },
+  primary: '#2F9D68',
+  accent: '#4CCB88',
+  bg: '#F7FAF7',
+  card: '#FFFFFF',
+  secondaryBg: '#EEF5EF',
+  darkBg: '#121815',
+  text: '#18201B',
+  secondaryText: '#65726B',
+  border: '#E3ECE5',
+  danger: '#E5484D',
+  warning: '#F5A623',
+  success: '#4CAF50',
+  info: '#4B8DFF',
 };
