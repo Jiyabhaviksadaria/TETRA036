@@ -2,7 +2,7 @@
 ### **Protect Every Harvest. Preserve Every Life.**
 
 <p align="center">
-  <img src="assets/banner.png" alt="Rakshak AI Banner" width="100%">
+  <img src="assets/rakshak-ai-banner.svg" alt="Rakshak AI Banner" width="100%">
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ Incident Timeline
 
 ---
 
-## 🌾 Field Context Module
+# 🌾 Field Context Module
 
 The system understands the environment before making recommendations.
 
@@ -105,7 +105,7 @@ Only practical deployment.
 
 ---
 
-## 🧠 Explainable Decision Engine (EDE)
+# 🧠 Explainable Decision Engine (EDE)
 
 The heart of Rakshak AI.
 
@@ -126,7 +126,7 @@ Every recommendation includes **why** it was generated.
 
 ---
 
-## 🚨 Smart Response Engine
+# 🚨 Smart Response Engine
 
 Maps threat levels into non-lethal deterrent recommendations.
 
@@ -146,7 +146,7 @@ The farmer always has the option to:
 
 ---
 
-## 📜 Incident Timeline
+# 📜 Incident Timeline
 
 Every important event is stored.
 
@@ -424,7 +424,7 @@ Edge deployment tomorrow.
 Rakshak-AI/
 │
 ├── assets/
-│   ├── banner.png
+│   ├── rakshak-ai-banner.svg
 │   └── screenshots/
 │
 ├── data/
