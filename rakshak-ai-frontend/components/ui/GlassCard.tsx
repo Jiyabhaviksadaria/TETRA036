@@ -13,8 +13,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 }) => {
   return (
     <div
-      className={`relative backdrop-blur-xl bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-2xl transition-all duration-300 hover:border-cyan-500/30 ${
-        glow ? 'shadow-cyan-500/10' : ''
+      className={`glass-card rounded-[24px] p-6 shadow-soft border border-rakshak-border transition-all duration-300 ${
+        glow ? 'shadow-glow border-rakshak-accent/50' : ''
       } ${className}`}
     >
       {children}
