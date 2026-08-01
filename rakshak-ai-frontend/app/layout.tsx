@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import './globals.css';
+import { ThemeProvider } from '../context/ThemeContext';
 
 export const metadata: Metadata = {
   title: 'Rakshak AI - Autonomous Farm Wildlife Intrusion Defense',
@@ -13,9 +14,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-rakshak-bg text-rakshak-text min-h-screen font-inter antialiased selection:bg-rakshak-primary selection:text-white">
-        {children}
+    <html lang="en" className="dark">
+      <body className="bg-slate-950 dark:bg-[#0B1F16] text-slate-900 dark:text-[#F4F1E8] min-h-screen font-inter antialiased selection:bg-[#1F5A3D] selection:text-white transition-colors duration-300">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
