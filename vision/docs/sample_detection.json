@@ -1,0 +1,28 @@
+{
+  "frame_number": 187,
+  "timestamp": "2026-08-01T10:45:22.334751Z",
+  "detections": [
+    {
+      "tracking_id": 3,
+      "animal": "Cow",
+      "confidence": 0.9241,
+      "bbox": [218, 134, 487, 412],
+      "position": [352, 273],
+      "previous_position": [341, 268],
+      "inside_boundary": false,
+      "near_boundary": true,
+      "direction": "Toward Crop"
+    },
+    {
+      "tracking_id": 7,
+      "animal": "Dog",
+      "confidence": 0.8103,
+      "bbox": [54, 310, 162, 428],
+      "position": [108, 369],
+      "previous_position": [112, 374],
+      "inside_boundary": false,
+      "near_boundary": false,
+      "direction": "Away From Crop"
+    }
+  ]
+}
