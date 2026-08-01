@@ -30,6 +30,17 @@ ENV/
 env.bak/
 venv.bak/
 
+# Environment variable files (never commit secrets)
+.env
+.env.local
+.env.*.local
+vision/.env
+
+# YOLO model weights (large binary files)
+*.pt
+*.pth
+*.onnx
+
 # SQLite databases
 *.db
 *.sqlite
@@ -43,6 +54,13 @@ venv.bak/
 # Local system files
 .DS_Store
 Thumbs.db
+
+# Next.js build output
+.next/
+out/
+
+# Node modules
+node_modules/
 
 # Scratch directory (agent specific, not project code)
 scratch/
