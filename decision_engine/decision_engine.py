@@ -1,43 +1,64 @@
 from decision_engine.constants import ENGINE_NAME, ENGINE_VERSION
 from decision_engine.rule_engine import evaluate_rules
-from decision_engine.response_engine import determine_recommendation
+from decision_engine.response_engine import determine_recommendation, determine_prevention
 from decision_engine.explainability import generate_reasons
+from decision_engine.utils import calculate_eta
 from decision_engine.schemas import DecisionInput, DecisionOutput, Observation, Assessment, Response, Metadata
 from typing import Dict, Any
 
 def evaluate_threat(input_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Main orchestration entrypoint for the Explainable Decision Engine (EDE).
-    Validates input, evaluates rules, determines recommendation, generates reasons,
-    and returns a structured response following the frozen contract.
+    Main orchestration entrypoint for the Crop Risk Intelligence Engine (formerly EDE).
+    Validates input, evaluates rules, calculates ETA, determines prevention actions,
+    generates reasons, and returns a structured response following the evolved contract.
     """
     # 1. Input Validation and Normalization using rule engine
-    threat_level, threat_score, trace, rule_reasons = evaluate_rules(input_data)
+    crop_risk_level, crop_risk_score, trace, rule_reasons = evaluate_rules(input_data)
 
-    # 2. Get animal/confidence from input or defaults if missing
+    # 2. Get animal/confidence/distance from input or defaults if missing
     animal = input_data.get("animal", "Unknown")
     confidence = input_data.get("confidence", 0.0)
-
-    # 3. Determine Deterrent Recommendation
+    distance = input_data.get("distance", None)
     time_str = input_data.get("time", "Day")
-    recommended_action = determine_recommendation(threat_level, time_str)
+    scenario = input_data.get("scenario", None)
+    zone = input_data.get("zone", None)
 
-    # 4. Generate Explainability Reason Chips
-    reasons = generate_reasons(input_data, rule_reasons)
+    # 3. Calculate deterministic ETA
+    eta_seconds = calculate_eta(animal, distance)
 
-    # 5. Build structured Output following schemas
+    # 4. Determine Deterrent Recommended Action and Adaptive Prevention
+    recommended_action = determine_recommendation(crop_risk_level, time_str)
+    decision, preventive_actions = determine_prevention(crop_risk_level, time_str)
+
+    # 5. Generate Explainability Reason Chips
+    reasons = generate_reasons(
+        input_data=input_data,
+        rule_reasons=rule_reasons,
+        crop_risk=crop_risk_level.value,
+        recommended_action=recommended_action.value,
+        eta_seconds=eta_seconds
+    )
+
+    # 6. Build structured Output following schemas (evolved nested structure)
     output = {
         "observation": {
             "animal": animal,
-            "confidence": confidence
+            "confidence": confidence,
+            "scenario": scenario,
+            "zone": zone
         },
         "assessment": {
-            "threat_score": threat_score,
-            "threat_level": threat_level.value
+            "threat_score": crop_risk_score,
+            "threat_level": crop_risk_level.value,
+            "crop_risk": crop_risk_level.value,
+            "crop_risk_score": crop_risk_score,
+            "eta_seconds": eta_seconds
         },
         "response": {
             "recommended_action": recommended_action.value,
-            "farmer_override": True
+            "farmer_override": True,
+            "decision": decision,
+            "preventive_actions": preventive_actions
         },
         "reason": reasons,
         "trace": trace,

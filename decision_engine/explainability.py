@@ -1,14 +1,22 @@
 from decision_engine.constants import HIGH_RISK_ANIMALS
 from decision_engine.enums import Direction
 from decision_engine.utils import is_night, is_near_crop, normalize_species, validate_direction
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
-def generate_reasons(input_data: Dict[str, Any], rule_reasons: List[str]) -> List[str]:
+def generate_reasons(
+    input_data: Dict[str, Any],
+    rule_reasons: List[str],
+    crop_risk: Optional[str] = None,
+    recommended_action: Optional[str] = None,
+    eta_seconds: Optional[int] = None
+) -> List[str]:
     """
     Generates explainable reason tags based on input data and rule engine conclusions.
     Reasons are concise, human-readable 1-3 word tags for UI chips.
+    Extends reasons with ETA, Crop Risk level, and recommended prevention action if available.
     """
-    # If the rule engine already determined a reason (e.g. suppression, unknown, errors)
+    # If the rule engine already determined a reason (e.g. suppression, unknown, errors),
+    # return it directly to preserve exact backward compatibility with tests/behavior.
     if rule_reasons:
         return rule_reasons
 
@@ -43,5 +51,18 @@ def generate_reasons(input_data: Dict[str, Any], rule_reasons: List[str]) -> Lis
     # 5. Inside Crop Region
     if inside_crop:
         reasons.append("Inside Protected Region")
+
+    # 6. Evolve/Extend reasons for CRIE
+    # ETA
+    if eta_seconds is not None:
+        reasons.append(f"ETA {eta_seconds} sec")
+
+    # Crop Risk
+    if crop_risk:
+        reasons.append(f"{crop_risk.title()} Crop Risk")
+
+    # Preventive Action / legacy Recommended Action
+    if recommended_action:
+        reasons.append(f"{recommended_action} Recommended")
 
     return reasons
