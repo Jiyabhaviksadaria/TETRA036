@@ -1,88 +1,103 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, Zap, CheckCircle2, Shield } from 'lucide-react';
+import { Zap, CheckCircle2, Shield, XCircle, AlertCircle } from 'lucide-react';
 
-export const RecommendationCard: React.FC = () => {
-  const [activated, setActivated] = useState(false);
+interface RecommendationCardProps {
+  actionText?: string;
+  reasonText?: string;
+  successRate?: number;
+}
+
+export const RecommendationCard: React.FC<RecommendationCardProps> = ({
+  actionText = 'Activate Zone B Strobe Light & 110dB Acoustic Siren',
+  reasonText = 'High-risk intrusion into a protected sugarcane crop sector during low-visibility night conditions.',
+  successRate = 94,
+}) => {
+  const [status, setStatus] = useState<'IDLE' | 'EXECUTED' | 'OVERRIDDEN'>('IDLE');
   const [loading, setLoading] = useState(false);
 
-  const handleExecute = () => {
+  const handleAccept = () => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      setActivated(true);
-    }, 1200);
+      setStatus('EXECUTED');
+    }, 800);
+  };
+
+  const handleOverride = () => {
+    setStatus('OVERRIDDEN');
   };
 
   return (
-    <div className="glass-card rounded-[24px] p-6 shadow-soft bg-gradient-to-br from-rakshak-secondaryBg/70 via-white to-white border border-rakshak-border space-y-4 relative overflow-hidden">
+    <div className="glass-panel rounded-[24px] p-6 shadow-soft-lg border border-forest-600/50 space-y-4 relative overflow-hidden">
       
-      {/* Header AI Assistant Pill */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-rakshak-primary text-xs font-mono font-bold">
-          <Sparkles className="w-4 h-4 text-rakshak-accent animate-pulse" />
-          <span>AI RECOMMENDATION ENGINE</span>
+        <div className="flex items-center gap-2 text-sunrise-400 text-xs font-mono font-bold">
+          <Zap className="w-4 h-4 text-sunrise-400 animate-pulse" />
+          <span>SMART RESPONSE ENGINE</span>
         </div>
-        <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-3 py-0.5 rounded-full">
-          94% Estimated Success
+        <span className="text-[11px] font-mono font-bold text-status-safe bg-status-safe/10 border border-status-safe/30 px-3 py-0.5 rounded-full">
+          {successRate}% Repel Rate
         </span>
       </div>
 
-      {/* Recommended Action */}
+      {/* Action Title */}
       <div>
-        <h3 className="font-sora text-lg font-bold text-rakshak-text flex items-center gap-2">
-          <Shield className="w-5 h-5 text-rakshak-primary" />
-          Activate Zone B High-Frequency Siren
+        <h3 className="font-display text-base font-bold text-field-100 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-forest-600 fill-emerald-500/30" />
+          {actionText}
         </h3>
-        <p className="text-xs text-rakshak-secondaryText font-inter mt-1">
-          Triggers multi-directional ultrasonic pulse &amp; 110dB acoustic deterrent.
+      </div>
+
+      {/* Reasoning Container */}
+      <div className="bg-forest-950/60 border border-forest-600/30 rounded-2xl p-3.5 space-y-1">
+        <span className="text-[10px] font-mono text-sunrise-400 font-bold uppercase tracking-wider block">
+          AI Justification &amp; Context:
+        </span>
+        <p className="font-body text-xs text-field-100/90 leading-relaxed">
+          {reasonText}
         </p>
       </div>
 
-      {/* Reason Tags */}
-      <div>
-        <p className="text-[11px] font-mono text-rakshak-secondaryText uppercase tracking-wider mb-2">
-          AI Risk Drivers &amp; Context:
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[11px] font-mono bg-white text-rakshak-text px-3 py-1 rounded-full border border-rakshak-border shadow-soft">
-            Moving toward crops
-          </span>
-          <span className="text-[11px] font-mono bg-white text-rakshak-text px-3 py-1 rounded-full border border-rakshak-border shadow-soft">
-            Large animal pack
-          </span>
-          <span className="text-[11px] font-mono bg-white text-rakshak-text px-3 py-1 rounded-full border border-rakshak-border shadow-soft">
-            Fast movement (14 km/h)
-          </span>
-          <span className="text-[11px] font-mono bg-white text-rakshak-text px-3 py-1 rounded-full border border-rakshak-border shadow-soft">
-            Repeated intrusion zone
-          </span>
-        </div>
-      </div>
-
-      {/* One Click Execute Action */}
+      {/* Action Buttons: Accept vs Farmer Override */}
       <div className="pt-2">
-        {activated ? (
-          <div className="w-full py-3 rounded-2xl bg-emerald-700 text-white font-sora font-semibold text-xs flex items-center justify-center gap-2 shadow-soft animate-in fade-in">
+        {status === 'EXECUTED' ? (
+          <div className="w-full py-3 rounded-2xl bg-status-safe/20 border border-status-safe text-status-safe font-display font-semibold text-xs flex items-center justify-center gap-2 shadow-glow-safe animate-in fade-in">
             <CheckCircle2 className="w-4 h-4" />
-            <span>Zone B Siren Fired Successfully! Animal Repelled</span>
+            <span>Action Accepted &amp; Deterrent Siren Fired!</span>
+          </div>
+        ) : status === 'OVERRIDDEN' ? (
+          <div className="w-full py-3 rounded-2xl bg-status-caution/20 border border-status-caution text-status-caution font-display font-semibold text-xs flex items-center justify-center gap-2 animate-in fade-in">
+            <AlertCircle className="w-4 h-4" />
+            <span>Farmer Manual Override Applied — Action Paused</span>
           </div>
         ) : (
-          <button
-            onClick={handleExecute}
-            disabled={loading}
-            className="w-full py-3 rounded-2xl bg-rakshak-primary hover:bg-rakshak-primary/90 text-white font-sora font-semibold text-xs flex items-center justify-center gap-2 shadow-soft hover:shadow-glow transition-all duration-300"
-          >
-            {loading ? (
-              <span className="animate-pulse">Transmitting Signal to Speaker Node...</span>
-            ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                <span>Execute Zone B Siren Now</span>
-              </>
-            )}
-          </button>
+          <div className="grid grid-cols-2 gap-3 font-display">
+            <button
+              onClick={handleAccept}
+              disabled={loading}
+              className="py-3 px-4 rounded-2xl bg-forest-600 hover:bg-forest-600/80 text-field-100 text-xs font-bold flex items-center justify-center gap-2 shadow-soft hover:shadow-glow-safe transition-all duration-300"
+            >
+              {loading ? (
+                <span className="animate-pulse">Transmitting...</span>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-status-safe" />
+                  <span>Accept Action</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleOverride}
+              className="py-3 px-4 rounded-2xl bg-forest-800 hover:bg-forest-800/80 text-field-100/80 hover:text-field-100 border border-forest-600/40 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+            >
+              <XCircle className="w-4 h-4 text-status-caution" />
+              <span>Farmer Override</span>
+            </button>
+          </div>
         )}
       </div>
 

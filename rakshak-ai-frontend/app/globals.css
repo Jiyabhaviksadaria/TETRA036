@@ -1,85 +1,106 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Sora:wght@600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-sora: 'Sora', sans-serif;
-  --font-inter: 'Inter', sans-serif;
-  --font-ibm-plex: 'IBM Plex Sans', monospace;
-  
-  --bg-main: #F7FAF7;
-  --bg-dark: #121815;
-  --card-white: #FFFFFF;
-  --text-main: #18201B;
-  --text-muted: #65726B;
-  --primary-green: #2F9D68;
-  --accent-green: #4CCB88;
-  --border-color: #E3ECE5;
+  --font-display: 'Space Grotesk', 'Sora', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --forest-950: #0B1F16;
+  --forest-800: #123626;
+  --forest-600: #1F5A3D;
+  --sunrise-400: #F2C879;
+  --field-100: #F4F1E8;
+  --status-safe: #4ADE80;
+  --status-caution: #FACC15;
+  --status-alert: #EF4444;
+  --ink-900: #101512;
 }
 
 body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  font-family: var(--font-inter);
+  background-color: var(--forest-950);
+  color: var(--field-100);
+  font-family: var(--font-body);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-sora);
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.font-num {
-  font-family: var(--font-ibm-plex);
+.font-mono-data {
+  font-family: var(--font-mono);
 }
 
-/* Glassmorphism utilities */
-.glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(227, 236, 229, 0.8);
-}
-
-.glass-card-dark {
-  background: rgba(18, 24, 21, 0.85);
+/* Glassmorphism panels */
+.glass-panel {
+  background: rgba(18, 54, 38, 0.75);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(31, 90, 61, 0.4);
+}
+
+.glass-card {
+  background: rgba(18, 54, 38, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(31, 90, 61, 0.5);
 }
 
 .glass-nav {
-  background: rgba(247, 250, 247, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(227, 236, 229, 0.6);
+  background: rgba(11, 31, 22, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(31, 90, 61, 0.4);
 }
 
-/* Animations */
-@keyframes pulseGlow {
+/* Signature Status Ring Animations */
+@keyframes ringPulseSafe {
   0%, 100% {
-    box-shadow: 0 0 15px rgba(76, 203, 136, 0.3);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.3), inset 0 0 15px rgba(74, 222, 128, 0.2);
   }
   50% {
-    box-shadow: 0 0 30px rgba(76, 203, 136, 0.6);
+    box-shadow: 0 0 45px rgba(74, 222, 128, 0.6), inset 0 0 30px rgba(74, 222, 128, 0.4);
   }
 }
 
-.animate-pulse-glow {
-  animation: pulseGlow 3s infinite ease-in-out;
+@keyframes ringPulseAlert {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.4), inset 0 0 20px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(239, 68, 68, 0.85), inset 0 0 40px rgba(239, 68, 68, 0.6);
+  }
 }
 
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(1000%); }
+.animate-ring-safe {
+  animation: ringPulseSafe 3s infinite ease-in-out;
 }
 
-.animate-scanline {
-  animation: scanline 8s linear infinite;
+.animate-ring-alert {
+  animation: ringPulseAlert 1.5s infinite ease-in-out;
+}
+
+/* 4-Step EDE Pipeline Fill Effect */
+@keyframes pipelineStepFill {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-step-fill {
+  animation: pipelineStepFill 0.4s ease-out forwards;
 }
 
 /* Scrollbars */
@@ -88,12 +109,13 @@ h1, h2, h3, h4, h5, h6 {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #EEF5EF;
+  background: #0B1F16;
 }
 ::-webkit-scrollbar-thumb {
-  background: #C4D7C9;
+  background: #123626;
   border-radius: 9999px;
+  border: 1px solid #1F5A3D;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2F9D68;
+  background: #1F5A3D;
 }
