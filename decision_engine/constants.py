@@ -36,3 +36,25 @@ SCORE_WEIGHTS = {
 THREAT_SCORE_LOW_MAX = 2
 THREAT_SCORE_MEDIUM_MAX = 6
 # 7+ is HIGH
+
+# Estimated animal speeds (in m/s)
+ANIMAL_SPEEDS = {
+    "Cow": 1.2,
+    "Wild Boar": 2.5,
+    "Buffalo": 1.0,
+    "Nilgai": 2.2,
+    "Unknown": 1.5
+}
+
+# Adaptive Prevention lookup configuration
+ADAPTIVE_PREVENTION_ACTIONS = {
+    "LOW": ["Monitor"],
+    "MEDIUM": ["Flash Light", "Notify Farmer"],
+    "HIGH": ["Flash Light", "Speaker", "Notify Farmer"]
+}
+
+ADAPTIVE_PREVENTION_DECISIONS = {
+    "LOW": "Monitor Crop",
+    "MEDIUM": "Activate Prevention",
+    "HIGH": "Activate Prevention"
+}

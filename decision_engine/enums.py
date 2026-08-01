@@ -1,15 +1,21 @@
 from enum import Enum
 
-class ThreatLevel(str, Enum):
+class CropRiskLevel(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
 
-class Recommendation(str, Enum):
+# Legacy alias for backward compatibility
+ThreatLevel = CropRiskLevel
+
+class AdaptivePrevention(str, Enum):
     MONITOR = "Monitor"
     FLASH_LIGHT = "Flash Light"
     SPEAKER = "Speaker"
     FLASH_LIGHT_SPEAKER = "Flash Light + Speaker"
+
+# Legacy alias for backward compatibility
+Recommendation = AdaptivePrevention
 
 class Direction(str, Enum):
     TOWARD_CROP = "Toward Crop"

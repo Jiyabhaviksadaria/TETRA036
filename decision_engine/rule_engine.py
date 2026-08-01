@@ -2,21 +2,21 @@ from decision_engine.constants import (
     CONFIDENCE_THRESHOLD, HIGH_RISK_ANIMALS, LOW_RISK_ANIMALS, SCORE_WEIGHTS,
     THREAT_SCORE_LOW_MAX, THREAT_SCORE_MEDIUM_MAX
 )
-from decision_engine.enums import ThreatLevel, Direction, TimeOfDay
+from decision_engine.enums import CropRiskLevel, Direction, TimeOfDay
 from decision_engine.utils import normalize_species, validate_direction, is_night, is_near_crop
 from typing import Dict, List, Tuple, Any
 
-def evaluate_rules(input_data: Dict[str, Any]) -> Tuple[ThreatLevel, int, Dict[str, int], List[str]]:
+def evaluate_rules(input_data: Dict[str, Any]) -> Tuple[CropRiskLevel, int, Dict[str, int], List[str]]:
     """
-    Evaluates threat score, threat level, trace score components, and reason keys.
-    Returns (ThreatLevel, threat_score, trace_dict, reason_list)
+    Evaluates crop risk score, crop risk level, trace score components, and reason keys.
+    Returns (CropRiskLevel, crop_risk_score, trace_dict, reason_list)
     """
     # Step 1: Input Validation
     required_fields = ["animal", "confidence", "distance", "direction", "time", "inside_crop_region"]
     missing = [f for f in required_fields if f not in input_data or input_data[f] is None]
     if missing:
         return (
-            ThreatLevel.LOW,
+            CropRiskLevel.LOW,
             0,
             {},
             ["Incomplete Observation"]
@@ -32,7 +32,7 @@ def evaluate_rules(input_data: Dict[str, Any]) -> Tuple[ThreatLevel, int, Dict[s
     # Step 2: Confidence Suppression
     if confidence < CONFIDENCE_THRESHOLD:
         return (
-            ThreatLevel.LOW,
+            CropRiskLevel.LOW,
             0,
             {"confidence_suppression": 0},
             ["Low Confidence"]
@@ -42,7 +42,7 @@ def evaluate_rules(input_data: Dict[str, Any]) -> Tuple[ThreatLevel, int, Dict[s
     if animal in LOW_RISK_ANIMALS:
         reason_tag = f"Non-threat species ({animal})" if animal != "Human" else "Human Intruder (Log Only)"
         return (
-            ThreatLevel.LOW,
+            CropRiskLevel.LOW,
             0,
             {"false_alarm_suppression": 0},
             [reason_tag]
@@ -56,20 +56,20 @@ def evaluate_rules(input_data: Dict[str, Any]) -> Tuple[ThreatLevel, int, Dict[s
         is_toward = direction == Direction.TOWARD_CROP.value
         if is_near or is_toward:
             return (
-                ThreatLevel.MEDIUM,
+                CropRiskLevel.MEDIUM,
                 5,
                 {"unknown_threat_escalation": 5},
                 ["Unknown Large Object"]
             )
         else:
             return (
-                ThreatLevel.LOW,
+                CropRiskLevel.LOW,
                 0,
                 {"unknown_threat_low": 0},
                 ["Far/Away Unknown Object"]
             )
 
-    # Step 5: Threat Score Calculation (for high-risk animals)
+    # Step 5: Crop Risk Score Calculation (for high-risk animals)
     trace = {}
     
     # Large Animal check
@@ -97,13 +97,13 @@ def evaluate_rules(input_data: Dict[str, Any]) -> Tuple[ThreatLevel, int, Dict[s
     total_score = sum(trace.values())
     total_score = max(0, total_score)
 
-    # Step 6: Threat Level Mapping
+    # Step 6: Crop Risk Level Mapping
     if total_score <= THREAT_SCORE_LOW_MAX:
-        threat_level = ThreatLevel.LOW
+        crop_risk_level = CropRiskLevel.LOW
     elif total_score <= THREAT_SCORE_MEDIUM_MAX:
-        threat_level = ThreatLevel.MEDIUM
+        crop_risk_level = CropRiskLevel.MEDIUM
     else:
-        threat_level = ThreatLevel.HIGH
+        crop_risk_level = CropRiskLevel.HIGH
 
     # Reasons will be computed by explainability module using these details
-    return threat_level, total_score, trace, []
+    return crop_risk_level, total_score, trace, []
