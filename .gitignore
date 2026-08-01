@@ -55,3 +55,14 @@ Thumbs.db
 
 # Scratch directory
 scratch/
+
+# Node/Next.js
+rakshak-ai-frontend/node_modules/
+rakshak-ai-frontend/.next/
+rakshak-ai-frontend/next-env.d.ts
+rakshak-ai-frontend/.turbo/
+rakshak-ai-frontend/build/
+rakshak-ai-frontend/dist/
+rakshak-ai-frontend/coverage/
+rakshak-ai-frontend/.cache/
+*.log

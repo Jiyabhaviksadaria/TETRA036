@@ -10,6 +10,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
         forest: {
           950: '#0B1F16',
           800: '#123626',
@@ -29,7 +31,6 @@ module.exports = {
         ink: {
           900: '#101512',
         },
-        // Backwards compatibility tokens
         rakshak: {
           primary: '#1F5A3D',
           accent: '#4ADE80',
