@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Bell, Sun, Moon, ShieldAlert, X } from 'lucide-react';
+import { Search, Bell, Sun, Moon, ShieldAlert, X, Wind, Droplets, Eye, Thermometer } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 export const Navbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showWeatherPopover, setShowWeatherPopover] = useState(false);
+  const weatherRef = useRef<HTMLDivElement>(null);
+
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Wild Boar Intrusion Warning', time: '2m ago', read: false },
     { id: 2, title: 'Zone B Siren Fired Successfully', time: '14m ago', read: false },
@@ -17,11 +20,22 @@ export const Navbar: React.FC = () => {
   const unreadCount = notifications.filter((n) => !n.read).length;
   const isDark = theme === 'dark';
 
+  // Click outside listener for weather popover
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (weatherRef.current && !weatherRef.current.contains(event.target as Node)) {
+        setShowWeatherPopover(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header
-      className={`h-20 border-b px-6 flex items-center justify-between transition-colors duration-300 relative z-30 font-inter ${
+      className={`h-20 border-b px-6 flex items-center justify-between transition-colors duration-300 relative z-50 font-inter ${
         isDark
-          ? 'bg-[#0B1F16] border-[#1F5A3D]/40 text-[#F4F1E8] shadow-[0_10px_30px_rgba(11,31,22,0.8)]'
+          ? 'bg-[#0E281C] border-[#246B49]/50 text-[#F4F1E8] shadow-[0_10px_30px_rgba(14,40,28,0.8)]'
           : 'bg-white border-slate-200 text-[#0F172A] shadow-sm'
       }`}
     >
@@ -58,30 +72,88 @@ export const Navbar: React.FC = () => {
           placeholder="Search cameras, zones, animals or logs..."
           className={`w-full h-11 border rounded-full pl-11 pr-4 text-xs transition-all font-inter shadow-inner ${
             isDark
-              ? 'bg-[#123626]/80 border-[#1F5A3D]/50 text-[#F4F1E8] placeholder-[#A3B8AD]/70 focus:border-[#4ADE80] focus:ring-1 focus:ring-[#4ADE80]/30'
-              : 'bg-slate-100 border-slate-200 text-[#0F172A] placeholder-[#64748B] focus:border-[#1F5A3D] focus:ring-1 focus:ring-[#1F5A3D]/30'
+              ? 'bg-[#163E2D]/80 border-[#246B49]/60 text-[#F4F1E8] placeholder-[#A3B8AD]/70 focus:border-[#4ADE80] focus:ring-1 focus:ring-[#4ADE80]/30'
+              : 'bg-slate-100 border-slate-200 text-[#0F172A] placeholder-[#64748B] focus:border-[#246B49] focus:ring-1 focus:ring-[#246B49]/30'
           }`}
         />
       </div>
 
-      {/* Right Actions: Theme Toggle + Weather + Notifications + User Avatar */}
+      {/* Right Actions: Weather Icon Button + Popover + Theme Toggle + Notifications + User Avatar */}
       <div className="flex items-center gap-3 md:gap-4">
         
-        {/* Real-time Weather Widget Pill */}
-        <div
-          className={`hidden sm:flex items-center gap-2.5 px-4 py-2 rounded-full border shadow-sm transition-all duration-300 ${
-            isDark
-              ? 'bg-[#123626]/90 border-[#1F5A3D]/50 text-[#F4F1E8]'
-              : 'bg-slate-100/90 border-slate-200 text-[#0F172A]'
-          }`}
-        >
-          <Sun className="w-4 h-4 text-[#FACC15] shrink-0" />
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="font-bold">24°C</span>
-            <span className={isDark ? 'text-[#A3B8AD]' : 'text-[#64748B]'}>Sunny</span>
-            <span className={isDark ? 'text-[#A3B8AD]/40' : 'text-slate-300'}>•</span>
-            <span className={isDark ? 'text-[#A3B8AD]' : 'text-[#64748B]'}>Wind 12 km/h NW</span>
-          </div>
+        {/* Weather Icon Button with Interactive Popup */}
+        <div ref={weatherRef} className="relative z-[100]">
+          <button
+            onClick={() => setShowWeatherPopover(!showWeatherPopover)}
+            aria-label="Weather Info"
+            title="Click to view farm weather telemetry"
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer ${
+              isDark
+                ? 'bg-[#163E2D] hover:bg-[#246B49]/60 border-[#246B49] text-[#F4F1E8]'
+                : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-[#0F172A]'
+            }`}
+          >
+            <Sun className="w-4 h-4 text-[#FACC15] animate-spin-slow" />
+            <span className="font-mono text-xs font-bold text-[#F2C879]">24°C</span>
+          </button>
+
+          {/* Interactive Weather Telemetry Popup (High z-index z-[100] above Mission Control) */}
+          {showWeatherPopover && (
+            <div
+              className={`absolute right-0 top-full mt-3 w-64 backdrop-blur-[24px] rounded-[24px] p-4 border space-y-3 z-[100] animate-in fade-in zoom-in-95 duration-150 shadow-2xl ${
+                isDark
+                  ? 'bg-[#163E2D] border-[#246B49] text-[#F4F1E8] shadow-[0_20px_50px_rgba(0,0,0,0.8)]'
+                  : 'bg-white border-slate-200 text-[#0F172A] shadow-2xl'
+              }`}
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-[#246B49]/40">
+                <div className="flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-[#FACC15]" />
+                  <span className="font-display font-bold text-xs">Sector 4 Weather</span>
+                </div>
+                <button
+                  onClick={() => setShowWeatherPopover(false)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="space-y-2 font-mono text-xs">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E281C] border border-[#246B49]/50">
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="w-4 h-4 text-[#FACC15]" />
+                    <span>Temperature</span>
+                  </div>
+                  <span className="font-bold text-[#F2C879]">24°C (Sunny)</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E281C] border border-[#246B49]/50">
+                  <div className="flex items-center gap-2">
+                    <Wind className="w-4 h-4 text-emerald-400" />
+                    <span>Wind Speed</span>
+                  </div>
+                  <span className="font-bold text-emerald-400">12 km/h NW</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E281C] border border-[#246B49]/50">
+                  <div className="flex items-center gap-2">
+                    <Droplets className="w-4 h-4 text-blue-400" />
+                    <span>Humidity</span>
+                  </div>
+                  <span className="font-bold text-blue-400">62% • Low Risk</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E281C] border border-[#246B49]/50">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-[#4ADE80]" />
+                    <span>Night Vision</span>
+                  </div>
+                  <span className="font-bold text-[#4ADE80]">9.4 km Clear</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ☀️ / 🌙 Night & Day Mode Toggle */}
@@ -91,7 +163,7 @@ export const Navbar: React.FC = () => {
           title={isDark ? 'Switch to Day Mode (Light Theme)' : 'Switch to Night Mode (Dark Theme)'}
           className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-300 hover:scale-105 active:scale-95 ${
             isDark
-              ? 'bg-[#123626]/80 hover:bg-[#123626] border-[#1F5A3D]/50 text-[#FACC15]'
+              ? 'bg-[#163E2D]/80 hover:bg-[#163E2D] border-[#246B49]/60 text-[#FACC15]'
               : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-amber-500 shadow-sm'
           }`}
         >
@@ -103,13 +175,13 @@ export const Navbar: React.FC = () => {
         </button>
 
         {/* Notification Button */}
-        <div className="relative">
+        <div className="relative z-[100]">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             aria-label="Notifications"
             className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition-all duration-200 relative ${
               isDark
-                ? 'bg-[#123626]/80 hover:bg-[#123626] border-[#1F5A3D]/50 text-[#F4F1E8]'
+                ? 'bg-[#163E2D]/80 hover:bg-[#163E2D] border-[#246B49]/60 text-[#F4F1E8]'
                 : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-[#0F172A]'
             }`}
           >
@@ -124,19 +196,19 @@ export const Navbar: React.FC = () => {
           {/* Notifications Dropdown */}
           {showNotifications && (
             <div
-              className={`absolute right-0 mt-3 w-80 backdrop-blur-[20px] rounded-[24px] p-4 border space-y-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200 ${
+              className={`absolute right-0 top-full mt-3 w-80 backdrop-blur-[24px] rounded-[24px] p-4 border space-y-3 z-[100] animate-in fade-in slide-in-from-top-2 duration-200 shadow-2xl ${
                 isDark
-                  ? 'bg-[#123626]/95 border-[#1F5A3D]/60 text-[#F4F1E8] shadow-[0_20px_40px_rgba(11,31,22,0.9)]'
-                  : 'bg-white/95 border-slate-200 text-[#0F172A] shadow-lg'
+                  ? 'bg-[#163E2D] border-[#246B49] text-[#F4F1E8] shadow-[0_20px_50px_rgba(0,0,0,0.8)]'
+                  : 'bg-white border-slate-200 text-[#0F172A] shadow-2xl'
               }`}
             >
               <div
                 className={`flex items-center justify-between pb-2 border-b ${
-                  isDark ? 'border-[#1F5A3D]/40' : 'border-slate-100'
+                  isDark ? 'border-[#246B49]/50' : 'border-slate-100'
                 }`}
               >
                 <span className="font-display font-bold text-xs">
-                  Recent Alerts & System Activity
+                  Recent Alerts &amp; System Activity
                 </span>
                 <button
                   onClick={() => setShowNotifications(false)}
@@ -153,7 +225,7 @@ export const Navbar: React.FC = () => {
                     className={`p-3 rounded-xl border text-xs space-y-1 transition-colors ${
                       n.read
                         ? isDark
-                          ? 'bg-[#0B1F16]/60 border-[#1F5A3D]/30 text-[#A3B8AD]'
+                          ? 'bg-[#0E281C]/60 border-[#246B49]/30 text-[#A3B8AD]'
                           : 'bg-slate-50 border-slate-100 text-[#64748B]'
                         : isDark
                         ? 'bg-red-950/40 border-red-500/40 text-[#F4F1E8] font-medium'
@@ -189,7 +261,7 @@ export const Navbar: React.FC = () => {
         <Link
           href="/profile"
           className={`flex items-center gap-3 p-1 rounded-full transition-colors group ${
-            isDark ? 'hover:bg-[#123626]/60' : 'hover:bg-slate-100'
+            isDark ? 'hover:bg-[#163E2D]/60' : 'hover:bg-slate-100'
           }`}
         >
           <img

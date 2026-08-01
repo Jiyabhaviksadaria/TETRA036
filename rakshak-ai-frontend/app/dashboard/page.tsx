@@ -3,41 +3,200 @@
 import React, { useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Navbar } from '@/components/layout/Navbar';
+import { MissionControl } from '@/components/dashboard/MissionControl';
+import { ScenarioSelector } from '@/components/dashboard/ScenarioSelector';
+import { DigitalFarmMap } from '@/components/dashboard/DigitalFarmMap';
 import { LiveFeed } from '@/components/camera/LiveFeed';
-import { DecisionEnginePanel, DecisionPayload } from '@/components/dashboard/DecisionEnginePanel';
+import { DecisionPayload } from '@/components/dashboard/DecisionEnginePanel';
 import { StatusRing, ThreatLevel } from '@/components/dashboard/StatusRing';
 import { RecommendationCard } from '@/components/dashboard/RecommendationCard';
 import { RecentAlerts, TimelineLogItem } from '@/components/dashboard/RecentAlerts';
 import { mockCameras } from '@/services/cameraService';
-import { ShieldCheck, Activity, Video, Bell, CloudSun } from 'lucide-react';
+import { runScenario, getInitialStatus, SystemStatus, ScenarioResult } from '@/services/mockApi';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function DashboardPage() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const [selectedScenario, setSelectedScenario] = useState<string>('Wild Boar');
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+
+  // System & Mission Control State
+  const [systemStatus, setSystemStatus] = useState<SystemStatus>(getInitialStatus());
+
+  // Animal Map State
+  const [animalMap, setAnimalMap] = useState({
+    x: 82,
+    y: 72,
+    direction: 'SW (Toward Crop)',
+    type: 'Wild Boar',
+    emoji: '🐗',
+    threat: 'CRITICAL',
+  });
+
+  // Threat State
   const [threatLevel, setThreatLevel] = useState<ThreatLevel>('HIGH');
   const [activeDecision, setActiveDecision] = useState<DecisionPayload>({
-    animal: 'Wild Boar (Pack of 4)',
+    animal: 'Wild Boar',
     confidence: 94,
     region: 'Sector 4 Sugarcane Field',
-    movement: 'Advancing NW Toward Crops (14 km/h)',
+    movement: 'SW (Toward Crop)',
     time: 'Night (02:14:08 AM)',
-    threat: 'HIGH',
+    threat: 'CRITICAL',
     response: 'Zone B Strobe Light + 110dB Acoustic Siren',
-    reason: 'High-risk intrusion into a protected crop area during low-visibility night conditions.',
+    reason: 'Wild boar moving directly toward sugarcane crop zone at high speed during low-visibility night hours.',
   });
+
+  // Current Card ETA & Actions
+  const [cardData, setCardData] = useState<{
+    threatLevel: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    eta: number;
+    reason: string;
+    actions: string[];
+  }>({
+    threatLevel: 'CRITICAL',
+    eta: 18,
+    reason: 'Wild boar moving directly toward sugarcane crop zone at high speed during low-visibility night hours.',
+    actions: ['Flash High-Intensity Lights', 'Fire High-Decibel Siren', 'Notify Farmer via SMS/App'],
+  });
+
+  // Timeline Logs State
+  const [timelineLogs, setTimelineLogs] = useState<TimelineLogItem[]>([
+    {
+      id: 'log-01',
+      animal: 'Wild Boar',
+      emoji: '🐗',
+      confidence: 94,
+      region: 'Sector 4 Sugarcane Field',
+      movement: 'SW (Toward Crop)',
+      time: '02:14:08 AM',
+      threat: 'CRITICAL',
+      response: 'Zone B Strobe Light + 110dB Acoustic Siren',
+      outcome: 'Critical → Strobe + Siren',
+      reason: 'Wild boar moving directly toward sugarcane crop zone at high speed during low-visibility night hours.',
+    },
+    {
+      id: 'log-02',
+      animal: 'Nilgai',
+      emoji: '🦌',
+      confidence: 91,
+      region: 'North Perimeter Fence',
+      movement: 'W (Rapid Approach)',
+      time: '01:42:15 AM',
+      threat: 'HIGH',
+      response: 'High Siren + Strobe',
+      outcome: 'High → High Siren + Strobe',
+      reason: 'Nilgai (Blue Bull) herd member breaching northern perimeter fence.',
+    },
+  ]);
+
+  // Handle Simulation Start Cascade Trigger
+  const handleStartSimulation = async () => {
+    setIsRunning(true);
+
+    // Step 1: Motion Detected
+    setSystemStatus((prev) => ({ ...prev, motion: 'detected', camera: 'active' }));
+    
+    // Fetch scenario payload from mock engine
+    const result: ScenarioResult = await runScenario(selectedScenario);
+
+    // Step 2: AI Engine Analyzing
+    setSystemStatus((prev) => ({ ...prev, ai: 'analyzing' }));
+
+    setTimeout(() => {
+      // Step 3: Animate Digital Farm Map Dot
+      setAnimalMap({
+        x: result.position.x,
+        y: result.position.y,
+        direction: result.direction,
+        type: result.animal,
+        emoji: result.emoji,
+        threat: result.threat,
+      });
+
+      // Step 4: Update Threat Level
+      const mappedThreat: ThreatLevel =
+        result.threat === 'CRITICAL' || result.threat === 'HIGH'
+          ? 'HIGH'
+          : result.threat === 'MEDIUM' || result.threat === 'LOW'
+          ? 'LOW'
+          : 'SAFE';
+
+      setThreatLevel(mappedThreat);
+
+      setActiveDecision({
+        animal: `${result.emoji} ${result.animal}`,
+        confidence: result.confidence,
+        region: 'Sector 4 Sugarcane Field',
+        movement: result.direction,
+        time: result.timestamp,
+        threat: result.threat,
+        response: result.response.join(' + '),
+        reason: result.reason,
+      });
+
+      setCardData({
+        threatLevel: result.threat,
+        eta: result.eta,
+        reason: result.reason,
+        actions: result.response,
+      });
+
+      // Step 5: Mission Control Alert State
+      setSystemStatus({
+        farm: result.threat === 'CRITICAL' || result.threat === 'HIGH' ? 'alert' : result.threat === 'MEDIUM' ? 'caution' : 'safe',
+        system: 'active',
+        camera: 'active',
+        motion: 'detected',
+        ai: 'complete',
+      });
+
+      // Step 6: Prepend to Event Timeline
+      const newLog: TimelineLogItem = {
+        id: result.id,
+        animal: result.animal,
+        emoji: result.emoji,
+        confidence: result.confidence,
+        region: 'Sector 4 Sugarcane Field',
+        movement: result.direction,
+        time: result.timestamp,
+        threat: result.threat,
+        response: result.response.join(' + '),
+        outcome: `${result.threat} → ${result.response[0]}`,
+        reason: result.reason,
+      };
+
+      setTimelineLogs((prev) => [newLog, ...prev]);
+
+      setIsRunning(false);
+    }, 1000);
+  };
 
   const handleSelectLog = (logPayload: DecisionPayload) => {
     setActiveDecision(logPayload);
-    if (logPayload.threat === 'HIGH') {
+    if (logPayload.threat === 'HIGH' || logPayload.threat === 'CRITICAL') {
       setThreatLevel('HIGH');
-    } else if (logPayload.threat === 'LOW') {
+    } else if (logPayload.threat === 'LOW' || logPayload.threat === 'MEDIUM') {
       setThreatLevel('LOW');
     } else {
       setThreatLevel('SAFE');
     }
+
+    setCardData({
+      threatLevel: logPayload.threat,
+      eta: logPayload.threat === 'CRITICAL' ? 18 : logPayload.threat === 'HIGH' ? 25 : 45,
+      reason: logPayload.reason,
+      actions: logPayload.response.split(' + '),
+    });
   };
 
   return (
-    <div className="flex min-h-screen bg-forest-950 text-field-100 font-body">
-      
+    <div
+      className={`flex min-h-screen font-body transition-colors duration-300 ${
+        isDark ? 'bg-[#0E281C] text-[#F4F1E8]' : 'bg-[#F4FAF5] text-slate-900'
+      }`}
+    >
       {/* Left Sidebar */}
       <Sidebar />
 
@@ -45,68 +204,49 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <Navbar />
 
-        <main className="p-4 md:p-8 space-y-8 max-w-[1440px] mx-auto w-full">
+        {/* 🟢 Sticky Mission Control Status Strip */}
+        <MissionControl status={systemStatus} />
+
+        <main className="p-4 md:p-8 space-y-6 max-w-[1440px] mx-auto w-full">
           
-          {/* Main Top Header Banner */}
-          <div className="glass-panel rounded-[24px] p-6 shadow-soft-lg border border-forest-600/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-gradient-to-r from-forest-950 via-forest-800/60 to-forest-950">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-forest-800 text-sunrise-400 text-xs font-mono font-bold border border-forest-600/40">
-                <span className="w-2.5 h-2.5 rounded-full bg-status-safe animate-pulse" />
-                EXPLAINABLE AI SENTINEL ACTIVE • 24/7 DUSK &amp; NIGHT MONITORING
-              </div>
-              <h2 className="font-display text-2xl md:text-3xl font-extrabold text-field-100">
-                Autonomous Farm Defense Console
-              </h2>
-              <p className="text-xs text-field-100/70 font-body">
-                8 Optical &amp; Thermal camera nodes continuously scanning Green Valley Organic Farm.
-              </p>
-            </div>
+          {/* 🟡 Scenario Selector Bar */}
+          <ScenarioSelector
+            selectedScenario={selectedScenario}
+            onSelectScenario={setSelectedScenario}
+            onStartSimulation={handleStartSimulation}
+            isRunning={isRunning}
+          />
 
-            {/* Quick KPI Chips */}
-            <div className="grid grid-cols-3 gap-3 text-center font-mono w-full md:w-auto">
-              <div className="bg-forest-950 border border-forest-600/40 px-4 py-2.5 rounded-2xl shadow-soft">
-                <span className="text-[10px] text-field-100/60 block">Cameras</span>
-                <span className="font-bold text-field-100 text-sm">8 / 8 Active</span>
-              </div>
-              <div className="bg-forest-950 border border-forest-600/40 px-4 py-2.5 rounded-2xl shadow-soft">
-                <span className="text-[10px] text-field-100/60 block">Accuracy</span>
-                <span className="font-bold text-status-safe text-sm">98.7% Conf</span>
-              </div>
-              <div className="bg-forest-950 border border-forest-600/40 px-4 py-2.5 rounded-2xl shadow-soft">
-                <span className="text-[10px] text-field-100/60 block">Avg Speed</span>
-                <span className="font-bold text-sunrise-400 text-sm">&lt; 3.4 sec</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Primary Product Dashboard Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Grid Layout: Live Feed, 2D Farm Map, Threat Ring, Decision Card, Timeline */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Left 2 Columns: Live Feed & Explainable Decision Engine Panel */}
-            <div className="lg:col-span-2 space-y-8">
+            {/* Left 2 Columns */}
+            <div className="lg:col-span-2 space-y-6">
+              
               {/* 16:9 Live Camera Feed */}
               <LiveFeed cameras={mockCameras} />
 
-              {/* 4-Step Explainable Decision Engine (EDE) Panel */}
-              <DecisionEnginePanel payload={activeDecision} />
+              {/* 🗺️ Digital Farm Map Twin */}
+              <DigitalFarmMap animal={animalMap} />
 
-              {/* Scrollable Incident Timeline with Click-to-Replay Interaction */}
-              <RecentAlerts onSelectLog={handleSelectLog} />
+              {/* Event Timeline with Scenario Badges */}
+              <RecentAlerts logs={timelineLogs} onSelectLog={handleSelectLog} />
             </div>
 
-            {/* Right Column: Status Ring & Smart Response Card */}
-            <div className="space-y-8">
+            {/* Right Column: Threat Ring & Decision Card */}
+            <div className="space-y-6">
               {/* Signature Threat Status Ring Indicator & Simulator */}
               <StatusRing
                 threatLevel={threatLevel}
                 onThreatLevelChange={setThreatLevel}
               />
 
-              {/* Smart Response Card with Accept / Farmer Override */}
+              {/* 🔵 Decision / Alert Card with ETA & Checklist */}
               <RecommendationCard
-                actionText={activeDecision.response}
-                reasonText={activeDecision.reason}
-                successRate={activeDecision.confidence}
+                threatLevel={cardData.threatLevel}
+                eta={cardData.eta}
+                reasonText={cardData.reason}
+                actions={cardData.actions}
               />
             </div>
 

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Eye, MapPin, AlertTriangle, ShieldCheck, Cpu, ArrowRight, Play, Sparkles } from 'lucide-react';
+import { InfoPopover } from '../ui/InfoPopover';
+import { useTheme } from '../../context/ThemeContext';
 
 export interface DecisionPayload {
   animal: string;
@@ -9,7 +11,7 @@ export interface DecisionPayload {
   region: string;
   movement: string;
   time: string;
-  threat: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH';
+  threat: 'SAFE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   response: string;
   reason: string;
 }
@@ -33,6 +35,8 @@ const defaultPayload: DecisionPayload = {
 export const DecisionEnginePanel: React.FC<DecisionEnginePanelProps> = ({
   payload = defaultPayload,
 }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [activeStepIndex, setActiveStepIndex] = useState(4);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -46,7 +50,7 @@ export const DecisionEnginePanel: React.FC<DecisionEnginePanelProps> = ({
       const timer = setTimeout(() => {
         setActiveStepIndex(step);
         if (step === 4) setIsAnimating(false);
-      }, (idx + 1) * 350);
+      }, (idx + 1) * 300);
       timers.push(timer);
     });
 
@@ -56,57 +60,61 @@ export const DecisionEnginePanel: React.FC<DecisionEnginePanelProps> = ({
   const steps = [
     {
       num: '01',
-      stage: 'Observation',
+      stage: 'OBSERVATION',
       title: `${payload.animal} Detected`,
       detail: `Confidence: ${payload.confidence}% • Neural YOLOv8 Node`,
       icon: Eye,
-      color: 'text-emerald-400',
+      color: isDark ? 'text-[#4ADE80]' : 'text-emerald-700',
     },
     {
       num: '02',
-      stage: 'Context',
+      stage: 'CONTEXT',
       title: `${payload.region}`,
       detail: `Vector: ${payload.movement} • ${payload.time}`,
       icon: MapPin,
-      color: 'text-amber-400',
+      color: isDark ? 'text-[#F2C879]' : 'text-amber-700',
     },
     {
       num: '03',
-      stage: 'Assessment',
+      stage: 'ASSESSMENT',
       title: `Threat Severity: ${payload.threat}`,
       detail: payload.reason,
       icon: AlertTriangle,
-      color: payload.threat === 'HIGH' ? 'text-rose-400' : 'text-emerald-400',
+      color: payload.threat === 'HIGH' || payload.threat === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-400',
     },
     {
       num: '04',
-      stage: 'Decision',
+      stage: 'DECISION',
       title: payload.response,
-      detail: 'Automated 1-Click Action Transmitted to Zone B Edge Siren',
+      detail: 'Automated Non-lethal Action Transmitted to Zone B Edge Siren',
       icon: ShieldCheck,
-      color: 'text-emerald-300',
+      color: isDark ? 'text-emerald-300' : 'text-emerald-800',
     },
   ];
 
   return (
-    <div className="glass-panel rounded-[24px] p-6 shadow-soft-lg border border-forest-600/50 space-y-6 relative overflow-hidden">
+    <div
+      className={`rounded-[24px] p-6 border space-y-6 relative overflow-hidden transition-all duration-300 ${
+        isDark
+          ? 'glass-panel bg-[#163E2D]/90 border-[#246B49]/60 text-[#F4F1E8] shadow-[0_10px_30px_rgba(14,40,28,0.8)]'
+          : 'bg-white border-slate-200 text-slate-900 shadow-md'
+      }`}
+    >
       
-      {/* Panel Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-forest-600/40">
+      {/* High-Contrast Panel Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#246B49]/40">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-forest-600/30 border border-forest-600/60 text-emerald-400 flex items-center justify-center shadow-soft">
-            <Cpu className="w-5 h-5 animate-pulse" />
+          <div className="w-10 h-10 rounded-2xl bg-[#0E281C] border border-[#246B49] text-[#4ADE80] flex items-center justify-center shadow-sm">
+            <Cpu className="w-5 h-5 animate-pulse text-[#4ADE80]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-display text-lg font-bold text-field-100">
-                Explainable Decision Engine (EDE)
+              <h3 className={`font-display text-base sm:text-lg font-black tracking-wide ${isDark ? 'text-[#F2C879]' : 'text-[#0E281C]'}`}>
+                EXPLAINABLE DECISION ENGINE (EDE)
               </h3>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sunrise-400 bg-sunrise-400/10 border border-sunrise-400/30 px-2.5 py-0.5 rounded-full">
-                4-Stage Pipeline
-              </span>
+              <InfoPopover text="4-step transparent reasoning pipeline detailing observation, context, threat assessment, and non-lethal action." />
             </div>
-            <p className="text-xs text-forest-600/90 font-body text-field-100/70 mt-0.5">
+            <p className={`text-xs font-mono mt-0.5 ${isDark ? 'text-[#A3B8AD]' : 'text-slate-600'}`}>
               Transparent, human-auditable reasoning chain for farm intrusion repelling.
             </p>
           </div>
@@ -118,13 +126,17 @@ export const DecisionEnginePanel: React.FC<DecisionEnginePanelProps> = ({
             setActiveStepIndex(0);
             setIsAnimating(true);
             [1, 2, 3, 4].forEach((step, idx) => {
-              setTimeout(() => setActiveStepIndex(step), (idx + 1) * 350);
+              setTimeout(() => setActiveStepIndex(step), (idx + 1) * 300);
             });
           }}
           disabled={isAnimating}
-          className="self-start sm:self-auto px-3.5 py-1.5 rounded-full bg-forest-800 hover:bg-forest-600 text-sunrise-400 border border-forest-600/60 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-soft"
+          className={`self-start sm:self-auto px-4 py-2 rounded-full border text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm ${
+            isDark
+              ? 'bg-[#0E281C] hover:bg-[#246B49] text-[#F2C879] border-[#246B49]'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+          }`}
         >
-          <Play className="w-3 h-3 fill-current" />
+          <Play className="w-3.5 h-3.5 fill-current text-[#F2C879]" />
           <span>{isAnimating ? 'Running Pipeline...' : 'Replay Animation'}</span>
         </button>
       </div>
@@ -140,34 +152,36 @@ export const DecisionEnginePanel: React.FC<DecisionEnginePanelProps> = ({
               key={idx}
               className={`rounded-[20px] p-4 border transition-all duration-500 relative flex flex-col justify-between ${
                 isFilled
-                  ? 'bg-forest-800/90 border-forest-600 shadow-soft animate-step-fill'
-                  : 'bg-forest-950/40 border-forest-600/20 opacity-30 scale-95'
+                  ? isDark
+                    ? 'bg-[#0E281C]/90 border-[#246B49] shadow-md animate-step-fill'
+                    : 'bg-emerald-50/80 border-emerald-300 shadow-sm animate-step-fill'
+                  : 'bg-black/20 border-white/10 opacity-30 scale-95'
               }`}
             >
               <div>
                 {/* Step Header */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-mono font-bold text-sunrise-400 uppercase tracking-widest">
-                    Step {step.num} • {step.stage}
+                  <span className={`text-[11px] font-mono font-bold tracking-widest ${isDark ? 'text-[#F2C879]' : 'text-emerald-800'}`}>
+                    STEP {step.num} • {step.stage}
                   </span>
-                  <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isFilled ? 'bg-forest-600/40 text-emerald-300' : 'text-field-100/40'}`}>
+                  <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isFilled ? 'bg-[#246B49]/40 text-[#4ADE80]' : 'text-slate-500'}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                 </div>
 
                 {/* Step Content */}
-                <h4 className={`font-display text-sm font-bold mb-1.5 ${isFilled ? step.color : 'text-field-100/40'}`}>
+                <h4 className={`font-display text-sm font-extrabold mb-1.5 ${isFilled ? step.color : 'text-slate-500'}`}>
                   {step.title}
                 </h4>
 
-                <p className="font-body text-xs text-field-100/80 leading-relaxed">
+                <p className={`font-mono text-xs leading-relaxed ${isDark ? 'text-[#F4F1E8]/90' : 'text-slate-700'}`}>
                   {step.detail}
                 </p>
               </div>
 
               {/* Connecting Connector Arrow for Desktop */}
               {idx < 3 && (
-                <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 text-forest-600">
+                <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 z-10 text-[#246B49]">
                   <ArrowRight className="w-4 h-4" />
                 </div>
               )}
@@ -177,13 +191,13 @@ export const DecisionEnginePanel: React.FC<DecisionEnginePanelProps> = ({
       </div>
 
       {/* Reasoning Context Footer Callout */}
-      <div className="bg-forest-800/60 border border-forest-600/40 rounded-2xl p-4 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-sunrise-400 shrink-0 mt-0.5" />
+      <div className={`border rounded-2xl p-4 flex items-start gap-3 ${isDark ? 'bg-[#0E281C]/70 border-[#246B49]/50' : 'bg-slate-50 border-slate-200'}`}>
+        <Sparkles className="w-5 h-5 text-[#F2C879] shrink-0 mt-0.5" />
         <div>
-          <span className="font-mono text-xs font-bold text-sunrise-400 uppercase tracking-wider block mb-1">
+          <span className="font-mono text-xs font-bold text-[#F2C879] uppercase tracking-wider block mb-1">
             Explainable AI Reasoning Payload:
           </span>
-          <p className="font-body text-xs text-field-100 leading-relaxed italic">
+          <p className={`font-body text-xs leading-relaxed italic ${isDark ? 'text-[#F4F1E8]' : 'text-slate-800'}`}>
             &ldquo;{payload.reason}&rdquo;
           </p>
         </div>
