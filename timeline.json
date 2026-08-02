@@ -1,0 +1,22 @@
+[
+  {
+    "id": "935f8241-7e7b-4e09-842b-5e0df83db479",
+    "timestamp": "2026-08-02T05:07:12.695292+00:00",
+    "animal": "deer",
+    "confidence": 0.8,
+    "threat_level": "MEDIUM",
+    "recommendation": "Monitor",
+    "reason": [
+      "test reason"
+    ],
+    "farmer_action": "override",
+    "decision_input": {
+      "animal": "deer",
+      "confidence": 0.8,
+      "distance": 10.0,
+      "direction": "Toward Crop",
+      "time": "Day",
+      "inside_crop_region": false
+    }
+  }
+]
