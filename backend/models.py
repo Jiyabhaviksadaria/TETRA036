@@ -65,3 +65,55 @@ class StatusResponse(BaseModel):
     animal: str
     confidence: float
     timestamp: str
+
+
+# ---------------------------------------------------------------------------
+# Scenario & Simulation models
+# ---------------------------------------------------------------------------
+
+ScenarioAnimal = Literal["Wild Boar", "Cow", "Nilgai", "Dog", "Human"]
+
+SystemStateValue = Literal["STANDBY", "WAITING", "ACTIVE", "DETECTED", "ANALYZING", "CRITICAL", "SENT", "READY", "SAFE"]
+
+
+class ScenarioRequest(BaseModel):
+    """POST /scenario — select the active scenario animal."""
+    animal: ScenarioAnimal
+
+
+class SimulateRequest(BaseModel):
+    """POST /simulate — trigger a full end-to-end simulation."""
+    animal: ScenarioAnimal
+    time: TimeOfDay = TimeOfDay.NIGHT
+    inside_crop_region: bool = False
+
+
+class SystemState(BaseModel):
+    """Mission Control panel state — real-time system component statuses."""
+    farm_status: str = "SAFE"       # SAFE | ALERT
+    system: str = "ACTIVE"
+    camera: str = "STANDBY"
+    motion: str = "WAITING"
+    ai: str = "READY"
+    alert: str = "STANDBY"
+
+
+class FullStatusResponse(BaseModel):
+    """Extended GET /status — threat state + system state for Mission Control."""
+    threat_level: str
+    recommendation: str
+    reason: List[str]
+    animal: str
+    confidence: float
+    timestamp: str
+    system_state: SystemState
+    active_scenario: Optional[str] = None
+
+
+class SimulationResult(BaseModel):
+    """Response from POST /simulate."""
+    scenario: str
+    system_state: SystemState
+    threat: StatusResponse
+    incident_id: str
+    timestamp: str
