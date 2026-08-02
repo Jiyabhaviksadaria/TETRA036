@@ -1,4 +1,5 @@
 import { Alert } from '@/types/alert';
+import { rakshakApi, IncidentRecord } from './rakshakApi';
 
 export const mockAlerts: Alert[] = [
   {
@@ -54,8 +55,36 @@ export const mockAlerts: Alert[] = [
   },
 ];
 
+function threatToSeverity(level: string): Alert['severity'] {
+  if (level === 'HIGH') return 'critical';
+  if (level === 'MEDIUM') return 'high';
+  if (level === 'LOW') return 'medium';
+  return 'low';
+}
+
+function incidentToAlert(inc: IncidentRecord): Alert {
+  return {
+    id: inc.id,
+    title: `${inc.animal} Detected — ${inc.threat_level}`,
+    description: inc.reason.join('. ') || `${inc.animal} detected near crop area.`,
+    severity: threatToSeverity(inc.threat_level),
+    status: inc.farmer_action ? 'resolved' : 'active',
+    timestamp: new Date(inc.timestamp).toLocaleTimeString(),
+    cameraId: 'cam-01',
+    location: 'Farm Perimeter',
+    confidenceScore: Math.round(inc.confidence * 100),
+    threatType: inc.animal,
+  };
+}
+
 export const alertService = {
   async getAlerts(): Promise<Alert[]> {
+    try {
+      const incidents = await rakshakApi.getTimeline();
+      if (incidents.length > 0) return incidents.map(incidentToAlert);
+    } catch {
+      // backend not running — fall back to mock data
+    }
     return Promise.resolve(mockAlerts);
   },
 };
