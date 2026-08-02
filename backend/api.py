@@ -19,15 +19,19 @@ from fastapi.responses import JSONResponse
 
 from backend.models import (
     DecisionRequest,
+    DeviceActionRequest,
     FullStatusResponse,
     IncidentRecord,
     ScenarioRequest,
+    SensorTriggerRequest,
+    SensorTriggerResponse,
     SimulateRequest,
     SimulationResult,
     StatusResponse,
     SystemState,
     TimelineActionRequest,
     VisionInput,
+    VisionStatusResponse,
 )
 from backend.timeline import TimelineStore
 from decision_engine.decision_engine import evaluate_threat
@@ -346,3 +350,109 @@ async def simulate(payload: SimulateRequest) -> SimulationResult:
         incident_id=incident_id,
         timestamp=now_iso,
     )
+
+# ---------------------------------------------------------------------------
+# POST /sensor-trigger — PIR/ESP32 motion event
+# ---------------------------------------------------------------------------
+
+@router.post("/sensor-trigger", response_model=SensorTriggerResponse)
+async def sensor_trigger(payload: SensorTriggerRequest) -> SensorTriggerResponse:
+    """
+    Receive a motion event from PIR sensor / ESP32.
+    When motion=True, marks camera as active and updates system state.
+    The Vision module should begin detection after this trigger.
+    """
+    global system_state
+
+    if payload.motion:
+        system_state = SystemState(
+            farm_status=system_state.farm_status,
+            system="ACTIVE",
+            camera="ACTIVE",
+            motion="DETECTED",
+            ai=system_state.ai,
+            alert=system_state.alert,
+        )
+        logger.info("Sensor trigger received: motion detected at %s", payload.location)
+        return SensorTriggerResponse(
+            status="camera_started",
+            motion=payload.motion,
+            location=payload.location,
+        )
+
+    # Motion cleared — reset motion/camera state
+    system_state = SystemState(
+        farm_status=system_state.farm_status,
+        system="ACTIVE",
+        camera="STANDBY",
+        motion="WAITING",
+        ai=system_state.ai,
+        alert=system_state.alert,
+    )
+    logger.info("Sensor trigger received: no motion at %s", payload.location)
+    return SensorTriggerResponse(
+        status="ignored",
+        motion=payload.motion,
+        location=payload.location,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /vision/status — latest vision detection output
+# ---------------------------------------------------------------------------
+
+@router.get("/vision/status", response_model=VisionStatusResponse)
+async def vision_status() -> VisionStatusResponse:
+    """
+    Return the latest frame state received from the Vision module.
+    Frontend can display live detection data from this endpoint.
+    """
+    if frame_state is None:
+        return VisionStatusResponse(
+            animal="",
+            confidence=0.0,
+            tracking_id=None,
+            direction="Stationary",
+            inside_boundary=None,
+            position=None,
+            timestamp="",
+        )
+
+    return VisionStatusResponse(
+        animal=frame_state.get("animal", ""),
+        confidence=frame_state.get("confidence", 0.0),
+        tracking_id=frame_state.get("tracking_id"),
+        direction=frame_state.get("direction", "Stationary"),
+        inside_boundary=frame_state.get("inside_boundary"),
+        position=frame_state.get("position"),
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /device-action — trigger hardware outputs (buzzer, lights, siren)
+# ---------------------------------------------------------------------------
+
+@router.post("/device-action")
+async def device_action(payload: DeviceActionRequest) -> Dict[str, Any]:
+    """
+    Send action commands to ESP32/hardware devices.
+    For simulation/hackathon this returns the activated state immediately.
+    In production this would forward the command to the ESP32 over MQTT/HTTP.
+    """
+    activated = []
+    if payload.buzzer:
+        activated.append("buzzer")
+    if payload.red_light:
+        activated.append("red_light")
+    if payload.green_light:
+        activated.append("green_light")
+    if payload.siren:
+        activated.append("siren")
+
+    logger.info("Device action triggered: %s", activated)
+    return {
+        "status": "device activated",
+        "activated": activated,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
