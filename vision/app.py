@@ -11,9 +11,20 @@ wires the modules together and handles HTTP concerns.
 
 Endpoints
 ---------
-GET  /health   Service status, camera connectivity, FPS.
-GET  /live     Most recent VisionResponse (no pipeline execution).
-POST /detect   Execute the full pipeline; return a new VisionResponse.
+GET  /health          Service status, camera connectivity, FPS.
+GET  /live            Most recent VisionResponse (no pipeline execution).
+POST /detect          Execute the full pipeline; return a new VisionResponse.
+POST /sensor-trigger  Receive PIR motion trigger (hardware or demo).
+GET  /trigger-status  Current EventManager state (for dashboard polling).
+
+Trigger flow
+------------
+WAITING → (POST /sensor-trigger) → ACTIVE → camera opens
+        → (POST /detect)         → PROCESSING → pipeline runs
+        → result returned        → COMPLETE → WAITING (auto-reset)
+
+The camera is NOT held open permanently. It opens on trigger and is
+released after the event completes, matching the low-power design intent.
 
 Start with:
     uvicorn app:app --reload
@@ -26,15 +37,18 @@ import time
 from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from boundary import BoundaryAnalyzer
 from camera import VideoStream
 from config import Config
 from detector import Detector
 from direction import DirectionAnalyzer
+from event_manager import EventManager, MotionEvent, SystemState
 from schemas import Detection, HealthResponse, VisionResponse
 from tracker import Tracker
 
@@ -86,6 +100,11 @@ async def lifespan(app: FastAPI):
     Initialize all pipeline components on startup.
     Release resources on shutdown.
 
+    KEY CHANGE from original: the camera is NOT opened here.
+    It opens only when a motion trigger is received (POST /sensor-trigger)
+    and is released after each event completes. This matches the
+    low-power, event-driven hardware design.
+
     Raises SystemExit on configuration or model loading failure so
     that a misconfigured server never silently starts serving garbage.
     """
@@ -99,7 +118,7 @@ async def lifespan(app: FastAPI):
         logger.critical("Configuration error: %s", e)
         raise SystemExit(1) from e
 
-    # 2. Load YOLO model — expensive; do it once.
+    # 2. Load YOLO model — expensive; do it once at startup.
     try:
         detector = Detector()
     except RuntimeError as e:
@@ -117,41 +136,40 @@ async def lifespan(app: FastAPI):
 
     direction_analyzer = DirectionAnalyzer(boundary_analyzer)
 
-    # 4. Open the camera. Both webcam and video stream are held open
-    #    for the session. Video files rewind automatically when they
-    #    reach the end (handled in _read_frame), so the demo loops
-    #    continuously without restarting the server.
+    # 4. Camera stream object is created but NOT opened yet.
+    #    It will be opened by _open_camera() when a trigger fires
+    #    and closed by _close_camera() after the event completes.
     stream = VideoStream()
-    try:
-        stream.open()
-        logger.info(
-            "Camera opened in '%s' mode and held open for the session.",
-            Config.CAMERA_MODE,
-        )
-    except RuntimeError as e:
-        logger.critical("Failed to open camera: %s", e)
-        raise SystemExit(1) from e
 
-    # 5. Store shared state on the app object.
+    # 5. Event manager — controls the WAITING/ACTIVE/PROCESSING/COMPLETE
+    #    state machine that gates all camera and pipeline operations.
+    event_manager = EventManager()
+
+    # 6. Store shared state on the app object.
     app.state.detector           = detector
     app.state.tracker            = tracker
     app.state.boundary_analyzer  = boundary_analyzer
     app.state.direction_analyzer = direction_analyzer
     app.state.stream             = stream
+    app.state.event_manager      = event_manager
     app.state.frame_counter      = 0
     app.state.last_response: VisionResponse | None = None
     app.state.fps_tracker        = _FpsTracker()
 
-    logger.info("All pipeline components initialized. Ready to serve.")
+    logger.info(
+        "All pipeline components initialized. "
+        "Camera is CLOSED — waiting for motion trigger."
+    )
 
     yield  # Application runs here.
 
     # ------------------------------------------------------------------
-    # Shutdown
+    # Shutdown — release camera if somehow still open.
     # ------------------------------------------------------------------
     logger.info("Rakshak AI Vision Module shutting down.")
-    stream.release()
-    logger.info("Camera released.")
+    if stream.is_opened():
+        stream.release()
+        logger.info("Camera released on shutdown.")
 
 
 # ------------------------------------------------------------------
@@ -162,11 +180,56 @@ app = FastAPI(
     title="Rakshak AI — Vision Module",
     description=(
         "Observation API for the Rakshak AI Farm Decision Support System. "
-        "Answers: 'What is happening in front of the camera?'"
+        "Answers: 'What is happening in front of the camera?' "
+        "Camera activates only on PIR motion trigger."
     ),
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
+
+# Allow the frontend (Next.js) and backend service to call this API.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Pydantic schemas for the new trigger endpoints
+# ---------------------------------------------------------------------------
+
+class SensorTriggerRequest(BaseModel):
+    """
+    POST /sensor-trigger — unified body accepted from both sources.
+
+    Hardware (ESP32) sends:
+        { "event": "motion_detected", "sensor": "PIR",
+          "location": "north_boundary", "timestamp": "12:30" }
+
+    Demo / frontend button sends:
+        { "motion": true, "sensor_id": "farm_01" }
+
+    Both shapes are valid. The EventManager normalises them internally.
+    """
+    # Demo fields
+    motion:    Optional[bool]  = None
+    sensor_id: Optional[str]   = None
+
+    # Hardware fields
+    event:     Optional[str]   = None
+    sensor:    Optional[str]   = None
+    location:  Optional[str]   = None
+    timestamp: Optional[str]   = None
+
+
+class SensorTriggerResponse(BaseModel):
+    """Response returned by POST /sensor-trigger."""
+    status:       str            # "camera_started" | "already_active" | "ignored"
+    state:        str            # current EventManager state
+    event_count:  int
+    trigger_info: Dict[str, Any]
 
 
 # ------------------------------------------------------------------
@@ -195,8 +258,148 @@ def _run_pipeline(
 
 
 # ------------------------------------------------------------------
+# Camera lifecycle helpers (called by trigger & detect endpoints)
+# ------------------------------------------------------------------
+
+def _open_camera() -> None:
+    """
+    Open the camera stream. Called when a motion trigger transitions
+    the system to ACTIVE. Safe to call if already open (no-op).
+    """
+    stream: VideoStream = app.state.stream
+    if stream.is_opened():
+        return
+    try:
+        stream.open()
+        logger.info("Camera opened after motion trigger.")
+    except RuntimeError as e:
+        logger.error("Failed to open camera after trigger: %s", e)
+        raise
+
+
+def _close_camera() -> None:
+    """
+    Release the camera stream. Called after an event pipeline completes
+    or is aborted. Returns the system to low-power WAITING state.
+    """
+    stream: VideoStream = app.state.stream
+    if stream.is_opened():
+        stream.release()
+        logger.info("Camera released — returning to WAITING state.")
+
+
+# ------------------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------------------
+
+@app.post(
+    "/sensor-trigger",
+    response_model=SensorTriggerResponse,
+    summary="Receive PIR motion trigger (hardware or demo)",
+    tags=["Trigger"],
+)
+def sensor_trigger(payload: SensorTriggerRequest) -> SensorTriggerResponse:
+    """
+    Entry point for motion events.
+
+    **Hardware mode** — ESP32 POSTs when PIR fires:
+    ```json
+    { "event": "motion_detected", "sensor": "PIR",
+      "location": "north_boundary", "timestamp": "12:30" }
+    ```
+
+    **Demo mode** — frontend button simulates PIR:
+    ```json
+    { "motion": true, "sensor_id": "farm_01" }
+    ```
+
+    If the system is already ACTIVE or PROCESSING (a previous event is
+    still being handled), the trigger is acknowledged but ignored —
+    returns `status: "already_active"`.
+
+    On success the camera opens immediately and the system moves to
+    ACTIVE, ready for `POST /detect` calls.
+    """
+    em: EventManager = app.state.event_manager
+
+    # --- Already awake? ---
+    if not em.can_accept_trigger:
+        logger.info(
+            "Trigger received but system is already %s — ignoring.", em.state
+        )
+        return SensorTriggerResponse(
+            status="already_active",
+            state=em.state.value,
+            event_count=em.event_count,
+            trigger_info=payload.model_dump(exclude_none=True),
+        )
+
+    # --- Normalise payload into a MotionEvent ---
+    raw = payload.model_dump(exclude_none=True)
+
+    # Detect hardware payload by presence of "event" key
+    if payload.event == "motion_detected" or payload.sensor:
+        motion_event = MotionEvent.from_hardware_payload(raw)
+    else:
+        # Demo / frontend button
+        motion_event = MotionEvent.from_demo_payload(raw)
+
+    # --- Transition WAITING → ACTIVE ---
+    em.trigger(motion_event)
+
+    # --- Open camera ---
+    try:
+        _open_camera()
+    except RuntimeError as e:
+        # Camera failed — reset state machine so we don't get stuck
+        em.reset()
+        raise HTTPException(
+            status_code=503,
+            detail=f"Motion trigger received but camera failed to open: {e}",
+        )
+
+    # --- Transition ACTIVE → PROCESSING ---
+    em.mark_processing()
+
+    logger.info(
+        "Camera started. System ready for POST /detect calls. "
+        "Source: %s | Sensor: %s | Location: %s",
+        motion_event.source,
+        motion_event.sensor_id,
+        motion_event.location,
+    )
+
+    return SensorTriggerResponse(
+        status="camera_started",
+        state=em.state.value,
+        event_count=em.event_count,
+        trigger_info=motion_event.to_dict(),
+    )
+
+
+@app.get(
+    "/trigger-status",
+    summary="Current EventManager state",
+    tags=["Trigger"],
+)
+def trigger_status() -> Dict[str, Any]:
+    """
+    Poll current system state. Used by the frontend dashboard to show
+    whether the system is sleeping or active, and by the hardware ESP32
+    to confirm its trigger was received.
+
+    Returns the EventManager status dict:
+    ```json
+    {
+        "state":         "WAITING",
+        "event_count":   3,
+        "current_event": null
+    }
+    ```
+    """
+    em: EventManager = app.state.event_manager
+    return em.status_dict()
+
 
 @app.get(
     "/health",
@@ -261,12 +464,30 @@ def detect() -> VisionResponse:
     pipeline (detect → track → boundary → direction), and return a
     validated VisionResponse.
 
+    **Trigger-gated**: this endpoint requires a prior POST /sensor-trigger
+    to have moved the system to PROCESSING state. If called while WAITING
+    it returns 425 (Too Early) so the caller knows to trigger first.
+
+    After returning, the event is marked COMPLETE and the camera is
+    released — the system returns to WAITING automatically, ready for
+    the next PIR trigger.
+
     Returns an empty detections list if no supported animals are
     found in the frame — this is not an error.
-
-    Raises 503 if the camera cannot provide a frame (end of video
-    file, disconnected webcam, etc.).
     """
+    em: EventManager = app.state.event_manager
+
+    # --- Guard: camera must have been triggered ---
+    if not em.camera_should_be_open:
+        raise HTTPException(
+            status_code=425,
+            detail=(
+                f"System is in state '{em.state.value}'. "
+                "Send POST /sensor-trigger first to activate the camera, "
+                "then call POST /detect."
+            ),
+        )
+
     t_start = time.perf_counter()
 
     # --- Acquire frame ---
@@ -274,9 +495,15 @@ def detect() -> VisionResponse:
         frame = _read_frame()
     except RuntimeError as e:
         logger.error("Frame acquisition failed: %s", e)
+        # Camera failed mid-event — reset so the system isn't stuck
+        _close_camera()
+        em.reset()
         raise HTTPException(status_code=503, detail=str(e))
 
     if frame is None:
+        # Camera gave no frame — release and reset state machine
+        _close_camera()
+        em.reset()
         raise HTTPException(
             status_code=503,
             detail=(
@@ -298,6 +525,8 @@ def detect() -> VisionResponse:
         # Defensive catch — each stage already handles its own errors,
         # but we never want an unhandled exception to crash the server.
         logger.exception("Unexpected pipeline error: %s", e)
+        _close_camera()
+        em.reset()
         raise HTTPException(
             status_code=500,
             detail=f"Pipeline error: {e}",
@@ -334,6 +563,17 @@ def detect() -> VisionResponse:
         len(detections),
     )
 
+    # --- Event complete: release camera, reset to WAITING ---
+    # mark_complete() transitions PROCESSING → COMPLETE → WAITING automatically.
+    em.mark_complete()
+    _close_camera()
+
+    logger.info(
+        "Event complete. Camera released. System back to WAITING. "
+        "Detections this event: %d",
+        len(detections),
+    )
+
     return response
 
 
@@ -343,14 +583,15 @@ def detect() -> VisionResponse:
 
 def _read_frame():
     """
-    Read the next frame from the persistent stream (held open for
-    both webcam and video modes).
+    Read the next frame from the stream.
 
-    Video mode — rewind and retry on end-of-file so the demo loops
-    continuously without manual intervention.
+    The stream is opened on demand by _open_camera() when a trigger fires
+    and must be open when this function is called.
 
-    Webcam mode — returns None on a transient read failure; the
-    caller converts this to a 503.
+    Video mode — rewinds on end-of-file and returns the first frame of
+    the next loop, so the demo works continuously without manual reset.
+
+    Webcam mode — returns None on a transient read failure.
 
     Returns the frame (np.ndarray) or None if unavailable.
     Raises RuntimeError if the stream is not open.
@@ -360,15 +601,15 @@ def _read_frame():
     if not stream.is_opened():
         raise RuntimeError(
             "Camera stream is not open. "
-            "The camera may have been disconnected."
+            "POST /sensor-trigger must be called first."
         )
 
     frame = stream.read()
 
     if frame is None and Config.CAMERA_MODE == "video":
-        # End of file — reopen to rewind and serve the first frame
-        # of the next loop so the demo runs continuously.
-        logger.info("End of video file — rewinding for continuous demo.")
+        # End of video file during an active event — rewind and retry
+        # so the hackathon demo loops continuously.
+        logger.info("End of video file during event — rewinding.")
         stream.release()
         stream.open()
         frame = stream.read()
