@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.rakshak-ai.internal/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -10,7 +10,7 @@ export async function fetcher<T>(endpoint: string, options?: RequestInit): Promi
   });
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.statusText}`);
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
 
   return res.json();
