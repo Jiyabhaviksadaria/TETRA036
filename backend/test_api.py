@@ -200,3 +200,35 @@ def test_inside_crop_region_defaults_false(client):
 
     assert captured, "evaluate_threat was not called"
     assert captured[0].get("inside_crop_region") is False
+
+
+def test_get_monthly_report_pdf(client):
+    # Seed HIGH threat
+    with patch("backend.api.evaluate_threat", return_value=MOCK_ENGINE_OUTPUT):
+        client.post("/decision", json=VALID_DECISION)
+    
+    # Seed MEDIUM threat
+    medium_output = dict(MOCK_ENGINE_OUTPUT)
+    medium_output["assessment"] = {"threat_score": 40, "threat_level": "MEDIUM"}
+    with patch("backend.api.evaluate_threat", return_value=medium_output):
+        client.post("/decision", json=VALID_DECISION)
+
+    # Seed LOW threat
+    low_output = dict(MOCK_ENGINE_OUTPUT)
+    low_output["assessment"] = {"threat_score": 10, "threat_level": "LOW"}
+    with patch("backend.api.evaluate_threat", return_value=low_output):
+        client.post("/decision", json=VALID_DECISION)
+
+    r = client.get("/reports/monthly")
+    assert r.status_code == 200
+    assert r.headers.get("content-type") == "application/pdf"
+    
+    cd = r.headers.get("content-disposition")
+    assert cd is not None
+    assert "attachment" in cd
+    assert "filename" in cd
+    assert "rakshak_ai_monthly_report.pdf" in cd
+    
+    assert r.content.startswith(b"%PDF")
+
+

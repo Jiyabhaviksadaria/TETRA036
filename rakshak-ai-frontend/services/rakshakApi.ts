@@ -2,6 +2,7 @@
  * Rakshak AI Backend API service.
  * All calls go to http://localhost:8000 (or NEXT_PUBLIC_API_URL).
  */
+import { parseContentDispositionFilename } from '@/utils/download';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -121,4 +122,21 @@ export const rakshakApi = {
   /** POST /device-action — trigger hardware outputs */
   deviceAction: (buzzer = false, red_light = false, siren = false) =>
     post<{ status: string; activated: string[] }>('/device-action', { buzzer, red_light, siren }),
+
+  /** GET /reports/monthly — fetch monthly report PDF blob */
+  getMonthlyReportBlob: async (): Promise<{ blob: Blob; filename: string }> => {
+    const res = await fetch(`${BASE}/reports/monthly`);
+    if (!res.ok) throw new Error(`Failed to fetch report: ${res.status}`);
+    const blob = await res.blob();
+
+    const contentDisposition = res.headers.get('content-disposition');
+    let filename = parseContentDispositionFilename(contentDisposition);
+    if (!filename) {
+      console.warn("Content-Disposition missing filename. Using default filename.");
+      filename = 'rakshak_ai_monthly_report.pdf';
+    }
+
+    return { blob, filename };
+  },
 };
+

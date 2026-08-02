@@ -14,8 +14,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+import io
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 
 from backend.models import (
     DecisionRequest,
@@ -456,3 +462,194 @@ async def device_action(payload: DeviceActionRequest) -> Dict[str, Any]:
         "activated": activated,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+# ---------------------------------------------------------------------------
+# GET /reports/monthly — generate PDF report
+# ---------------------------------------------------------------------------
+
+@router.get("/reports/monthly")
+async def get_monthly_report():
+    """Generate a PDF summary of the incident timeline."""
+    records = timeline_store.all()
+
+    buffer = io.BytesIO()
+
+    # Setup document
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Theme colors
+    primary_color = colors.HexColor("#1b4332")
+    secondary_color = colors.HexColor("#2d6a4f")
+    text_color = colors.HexColor("#1b1b1b")
+    light_bg = colors.HexColor("#f4f7f6")
+
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=22,
+        leading=26,
+        textColor=primary_color,
+        spaceAfter=6
+    )
+
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#666666"),
+        spaceAfter=15
+    )
+
+    section_style = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=13,
+        leading=17,
+        textColor=secondary_color,
+        spaceBefore=12,
+        spaceAfter=8
+    )
+
+    cell_style = ParagraphStyle(
+        'TableCell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11,
+        textColor=text_color
+    )
+
+    th_style = ParagraphStyle(
+        'TableHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.white
+    )
+
+    elements = []
+
+    # Title & Header
+    elements.append(Paragraph("Rakshak AI — Farm Security Monthly Report", title_style))
+    elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Total Incidents Logged: {len(records)}", subtitle_style))
+    elements.append(Spacer(1, 10))
+
+    # Metrics Summary
+    total_incidents = len(records)
+    high_threats = sum(1 for r in records if r.threat_level == "HIGH")
+    medium_threats = sum(1 for r in records if r.threat_level == "MEDIUM")
+    low_threats = sum(1 for r in records if r.threat_level in ("LOW", "NONE"))
+
+    # Table layout for stats
+    stat_data = [
+        [
+            Paragraph("<b>Total Intrusions</b>", cell_style),
+            Paragraph("<b>High Threat Level</b>", cell_style),
+            Paragraph("<b>Medium Threat Level</b>", cell_style),
+            Paragraph("<b>Low/No Threat Level</b>", cell_style)
+        ],
+        [
+            Paragraph(f"<b>{total_incidents}</b>", title_style),
+            Paragraph(f"<b>{high_threats}</b>", title_style),
+            Paragraph(f"<b>{medium_threats}</b>", title_style),
+            Paragraph(f"<b>{low_threats}</b>", title_style)
+        ]
+    ]
+
+    stat_table = Table(stat_data, colWidths=[135, 135, 135, 135])
+    stat_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), light_bg),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 0),
+        ('TOPPADDING', (0,1), (-1,1), 0),
+        ('BOTTOMPADDING', (0,1), (-1,1), 10),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#dddddd")),
+        ('BOX', (0,0), (-1,-1), 1, secondary_color)
+    ]))
+
+    elements.append(Paragraph("Overview Dashboard Metrics", section_style))
+    elements.append(stat_table)
+    elements.append(Spacer(1, 15))
+
+    # Incidents List Table
+    elements.append(Paragraph("Incident Log Details", section_style))
+
+    # Table headers
+    headers = [
+        Paragraph("Timestamp", th_style),
+        Paragraph("Animal / Confidence", th_style),
+        Paragraph("Threat Level", th_style),
+        Paragraph("Recommendation", th_style),
+        Paragraph("Farmer Action", th_style)
+    ]
+
+    table_data = [headers]
+
+    for r in records:
+        try:
+            dt = datetime.fromisoformat(r.timestamp.replace("Z", "+00:00"))
+            time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            time_str = r.timestamp
+
+        action_str = r.farmer_action if r.farmer_action else "No Action"
+
+        # Color highlight for threat level
+        threat_color = "#2d6a4f" # normal green
+        if r.threat_level == "HIGH":
+            threat_color = "#b7094c"
+        elif r.threat_level == "MEDIUM":
+            threat_color = "#a01a58"
+
+        threat_p = Paragraph(f"<font color='{threat_color}'><b>{r.threat_level}</b></font>", cell_style)
+
+        row = [
+            Paragraph(time_str, cell_style),
+            Paragraph(f"<b>{r.animal}</b> ({r.confidence * 100:.0f}%)", cell_style),
+            threat_p,
+            Paragraph(r.recommendation, cell_style),
+            Paragraph(action_str.capitalize(), cell_style)
+        ]
+        table_data.append(row)
+
+    if len(records) == 0:
+        table_data.append([Paragraph("No incidents recorded in the timeline.", cell_style), "", "", "", ""])
+
+    inc_table = Table(table_data, colWidths=[110, 110, 80, 140, 100])
+    inc_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), primary_color),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, light_bg]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#dddddd"))
+    ]))
+
+    elements.append(inc_table)
+
+    # Build document
+    doc.build(elements)
+
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="rakshak_ai_monthly_report.pdf"'}
+    )

@@ -1,21 +1,64 @@
 [
   {
-    "id": "935f8241-7e7b-4e09-842b-5e0df83db479",
-    "timestamp": "2026-08-02T05:07:12.695292+00:00",
+    "id": "80a5fe96-5314-46eb-812b-414811f88898",
+    "timestamp": "2026-08-02T12:56:03.385004+00:00",
     "animal": "deer",
-    "confidence": 0.8,
-    "threat_level": "MEDIUM",
-    "recommendation": "Monitor",
+    "confidence": 0.85,
+    "threat_level": "HIGH",
+    "recommendation": "Speaker",
     "reason": [
-      "test reason"
+      "Animal moving toward crop",
+      "Night time"
     ],
-    "farmer_action": "override",
+    "farmer_action": null,
     "decision_input": {
       "animal": "deer",
-      "confidence": 0.8,
-      "distance": 10.0,
+      "confidence": 0.85,
+      "distance": 12.5,
       "direction": "Toward Crop",
-      "time": "Day",
+      "time": "Night",
+      "inside_crop_region": false
+    }
+  },
+  {
+    "id": "bc1ae482-05e4-4f2f-bf97-b26772d8bcf2",
+    "timestamp": "2026-08-02T12:56:03.389397+00:00",
+    "animal": "deer",
+    "confidence": 0.85,
+    "threat_level": "MEDIUM",
+    "recommendation": "Speaker",
+    "reason": [
+      "Animal moving toward crop",
+      "Night time"
+    ],
+    "farmer_action": null,
+    "decision_input": {
+      "animal": "deer",
+      "confidence": 0.85,
+      "distance": 12.5,
+      "direction": "Toward Crop",
+      "time": "Night",
+      "inside_crop_region": false
+    }
+  },
+  {
+    "id": "65006814-c229-40ff-bfcb-dbc0a06390aa",
+    "timestamp": "2026-08-02T12:56:03.392816+00:00",
+    "animal": "deer",
+    "confidence": 0.85,
+    "threat_level": "LOW",
+    "recommendation": "Speaker",
+    "reason": [
+      "Animal moving toward crop",
+      "Night time"
+    ],
+    "farmer_action": null,
+    "decision_input": {
+      "animal": "deer",
+      "confidence": 0.85,
+      "distance": 12.5,
+      "direction": "Toward Crop",
+      "time": "Night",
       "inside_crop_region": false
     }
   }
