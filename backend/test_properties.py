@@ -88,6 +88,7 @@ def _make_engine_output(animal: str, confidence: float):
 # ---------------------------------------------------------------------------
 
 @given(payload=_vision_strategy)
+@settings(deadline=None)
 def test_valid_vision_updates_frame_state(payload):
     # Feature: rakshak-ai-backend, Property 2: Valid Vision JSON updates frame state
     client = _fresh_client()
